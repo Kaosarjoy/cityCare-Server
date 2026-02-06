@@ -255,7 +255,35 @@ async function run() {
       const result = await issueCollection.findOne({ _id: new ObjectId(id) });
       res.send(result);
     });
+    // POST new issue (citizen)
+    app.post("/issues", verifyToken, async (req, res) => {
+      const issue = req.body;
+      const userEmail = req.decoded.email;
 
+      // Check user report limit
+      const user = await userCollection.findOne({ email: userEmail });
+      if (user.role !== 'admin' && user.subscription !== 'premium') {
+          const userReportCount = await issueCollection.countDocuments({ reporterEmail: userEmail });
+          if (userReportCount >= 3) {
+              return res.status(403).send({ message: "Free limit reached. Please subscribe." });
+          }
+      }
+
+      issue.createdAt = new Date();
+      issue.trackingId = generateTrackingId();
+      issue.paymentStatus = "unpaid";
+      issue.status = "Pending";
+      issue.priority = "Normal";
+      issue.upvotes = 0;
+      issue.votedUsers = [];
+
+      const result = await issueCollection.insertOne(issue);
+      
+      // Add timeline entry
+      await addTimelineEntry(db, result.insertedId, "Pending", `Issue reported by ${userEmail}`, userEmail);
+
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
