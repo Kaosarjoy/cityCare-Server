@@ -300,6 +300,31 @@ async function run() {
       await addTimelineEntry(db, id, status, message, userEmail);
       res.send(result);
     });
+     // Assign staff to issue (Admin)
+    app.patch("/issues/:id/assign", verifyToken, verifyAdmin, async (req, res) => {
+      const { staffName, staffEmail } = req.body;
+      const id = req.params.id;
+
+      const updateDoc = {
+        $set: {
+          stafName: staffName,
+          stafEmail: staffEmail,
+        },
+      };
+
+      const result = await issueCollection.updateOne(
+        { _id: new ObjectId(id) },
+        updateDoc
+      );
+
+      // Add timeline entry
+      await addTimelineEntry(db, id, "Pending", `Assigned to Staff: ${staffName}`, req.decoded.email);
+      res.send(result);
+    });
+
+
+
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
