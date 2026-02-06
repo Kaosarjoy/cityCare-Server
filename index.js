@@ -238,9 +238,25 @@ async function run() {
     });
 
 
+    // GET issues assigned to staff
+    app.get("/issues/staff/:email", verifyToken, async (req, res) => {
+      const staffEmail = req.params.email;
+      const { status } = req.query;
+      const query = { stafEmail: staffEmail };
+      if (status) query.status = status;
+
+      const result = await issueCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // GET single issue details
+    app.get("/issues/:id", async (req, res) => {
+      const id = req.params.id;
+      const result = await issueCollection.findOne({ _id: new ObjectId(id) });
+      res.send(result);
+    });
 
 
-    
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
