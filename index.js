@@ -134,11 +134,7 @@ async function run() {
     });
 
     // Update user role (admin)
-    app.patch(
-      "/users/:id/role",
-      verifyToken,
-      verifyAdmin,
-      async (req, res) => {
+    app.patch("/users/:id/role",verifyToken,verifyAdmin,async (req, res) => {
         const id = req.params.id;
         const { role } = req.body;
         const query = { _id: new ObjectId(id) };
@@ -153,11 +149,7 @@ async function run() {
     );
 
     // Block/Unblock user (admin)
-    app.patch(
-      "/users/:id/status",
-      verifyToken,
-      verifyAdmin,
-      async (req, res) => {
+    app.patch("/users/:id/status",verifyToken,verifyAdmin,async (req, res) => {
         const id = req.params.id;
         const { status } = req.body; // active or blocked
         const query = { _id: new ObjectId(id) };
@@ -187,7 +179,13 @@ async function run() {
         res.send(user);
     });
 
-   
+   // --- STAFF API ---
+
+    // Get all staff (admin)
+    app.get("/staffs", verifyToken, verifyAdmin, async (req, res) => {
+      const result = await stafsCollection.find().toArray();
+      res.send(result);
+    });
    
     
 
