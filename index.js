@@ -321,7 +321,30 @@ async function run() {
       await addTimelineEntry(db, id, "Pending", `Assigned to Staff: ${staffName}`, req.decoded.email);
       res.send(result);
     });
+    // Upvote issue (Citizen)
+    app.patch("/issues/:id/upvote", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const userEmail = req.decoded.email;
+      
+      const issue = await issueCollection.findOne({ _id: new ObjectId(id) });
+      
+      if (issue.reporterEmail === userEmail) {
+          return res.status(400).send({ message: "Cannot upvote your own issue" });
+      }
 
+      if (issue.votedUsers && issue.votedUsers.includes(userEmail)) {
+          return res.status(400).send({ message: "Already upvoted" });
+      }
+
+      const result = await issueCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { 
+              $inc: { upvotes: 1 },
+              $push: { votedUsers: userEmail }
+          }
+      );
+      res.send(result);
+    });
 
 
 
@@ -344,3 +367,6 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
+
+
+//https://docs.google.com/document/d/1IBsw4txo6JSav_MJNBsv5_spB0emiYVK/edit
