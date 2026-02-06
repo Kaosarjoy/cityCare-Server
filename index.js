@@ -193,7 +193,16 @@ async function run() {
       const result = await stafsCollection.insertOne(staffData);
       res.send(result);
     });
-
+      // Update staff (admin)
+    app.patch("/staffs/:id", verifyToken, verifyAdmin, async (req, res) => {
+      const id = req.params.id;
+      const updatedInfo = req.body;
+      const result = await stafsCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: updatedInfo }
+      );
+      res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
