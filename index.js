@@ -285,6 +285,21 @@ async function run() {
       res.send(result);
     });
 
+    // Patch issue status (Staff/Admin)
+    app.patch("/issues/:id/status", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const { status, message } = req.body;
+      const userEmail = req.decoded.email;
+
+      const result = await issueCollection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { status: status } }
+      );
+
+      // Add timeline entry
+      await addTimelineEntry(db, id, status, message, userEmail);
+      res.send(result);
+    });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
