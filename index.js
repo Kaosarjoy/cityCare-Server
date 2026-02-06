@@ -187,7 +187,12 @@ async function run() {
       res.send(result);
     });
    
-    
+    // Add new staff (admin)
+    app.post("/staffs", verifyToken, verifyAdmin, async (req, res) => {
+      const staffData = req.body;
+      const result = await stafsCollection.insertOne(staffData);
+      res.send(result);
+    });
 
 
     // Send a ping to confirm a successful connection
