@@ -209,7 +209,38 @@ async function run() {
       const result = await stafsCollection.deleteOne({ _id: new ObjectId(id) });
       res.send(result);
     });
+    // --- ISSUES API ---
 
+    // GET all issues with Pagination, Search, and Filtering
+    app.get("/issues", async (req, res) => {
+      const { email, status, category, priority, search, page = 1, limit = 10 } = req.query;
+      const query = {};
+      if (email) query.reporterEmail = email;
+      if (status) query.status = status;
+      if (category) query.category = category;
+      if (priority) query.priority = priority;
+
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: "i" } },
+          { location: { $regex: search, $options: "i" } },
+        ];
+      }
+
+      // Pagination logic
+      const skip = (parseInt(page) - 1) * parseInt(limit);
+
+      // Sorting: Boosted items first, then by creation date
+      const result = await issueCollection.find(query).sort({ priority: -1, createdAt: -1 }).skip(skip).limit(parseInt(limit)).toArray();
+
+      const totalIssues = await issueCollection.countDocuments(query);
+      res.send({ result, totalIssues });
+    });
+
+
+
+
+    
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
