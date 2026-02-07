@@ -346,7 +346,22 @@ async function run() {
       res.send(result);
     });
 
+    
+    // Delete issue
+    app.delete("/issues/:id", verifyToken, async (req, res) => {
+      const id = req.params.id;
+      const result = await issueCollection.deleteOne({ _id: new ObjectId(id) });
+      // Delete associated timeline
+      await timelineCollection.deleteMany({ issueId: new ObjectId(id) });
+      res.send(result);
+    });
 
+    // Get timeline for an issue
+    app.get("/timelines/:issueId", verifyToken, async (req, res) => {
+        const issueId = req.params.issueId;
+        const result = await timelineCollection.find({ issueId: new ObjectId(issueId) }).sort({ date: -1 }).toArray();
+        res.send(result);
+    });
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
