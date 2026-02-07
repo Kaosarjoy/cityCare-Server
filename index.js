@@ -7,7 +7,7 @@ const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const admin = require("firebase-admin");
 
 // --- Firebase Admin SDK Setup ---
-// Make sure to download the service account key JSON file from Firebase Console
+// ঠিক করা লাইন: ফোল্ডার পাথ সঠিক করা হয়েছে
 const serviceAccount = require("./serviceAccountKey.json");
 
 admin.initializeApp({
@@ -109,10 +109,7 @@ async function run() {
         ];
       }
 
-      const result = await userCollection
-        .find(query)
-        .sort({ createdAt: -1 })
-        .toArray();
+      const result = await userCollection.find(query).sort({ createdAt: -1 }).toArray();
       res.send(result);
     });
 
@@ -193,7 +190,7 @@ async function run() {
       const result = await stafsCollection.insertOne(staffData);
       res.send(result);
     });
-      // Update staff (admin)
+     // Update staff (admin)
     app.patch("/staffs/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       const updatedInfo = req.body;
@@ -362,7 +359,79 @@ async function run() {
         const result = await timelineCollection.find({ issueId: new ObjectId(issueId) }).sort({ date: -1 }).toArray();
         res.send(result);
     });
+    
+ // --- PAYMENTS & BOOSTING ---
 
+    // Create payment intent and boost issue
+    app.post("/payments/boost", verifyToken, async (req, res) => {
+        const { issueId, amount } = req.body;
+        const email = req.decoded.email;
+        
+        // 1. Update issue priority
+        await issueCollection.updateOne(
+            { _id: new ObjectId(issueId) },
+            { $set: { priority: "High", paymentStatus: "paid" } }
+        );
+
+        // 2. Add to timeline
+        await addTimelineEntry(db, issueId, "High Priority", "Issue boosted via payment", email);
+
+        // 3. Record payment
+        const paymentInfo = {
+            email,
+            issueId: new ObjectId(issueId),
+            amount,
+            type: "boost",
+            date: new Date()
+        };
+        const result = await paymentsCollection.insertOne(paymentInfo);
+        
+        res.send(result);
+    });
+
+    // Subscribe to premium
+    app.post("/payments/subscribe", verifyToken, async (req, res) => {
+        const { amount } = req.body;
+        const email = req.decoded.email;
+        
+        // 1. Update user to premium
+        await userCollection.updateOne(
+            { email: email },
+            { $set: { subscription: "premium" } }
+        );
+
+        // 2. Record payment
+        const paymentInfo = {
+            email,
+            amount,
+            type: "subscription",
+            date: new Date()
+        };
+        const result = await paymentsCollection.insertOne(paymentInfo);
+        
+        res.send(result);
+    });
+
+    // Get all payments (Admin)
+    app.get("/payments", verifyToken, verifyAdmin, async (req, res) => {
+        const result = await paymentsCollection.find().sort({ date: -1 }).toArray();
+        res.send(result);
+    });
+
+
+// --- DASHBOARD STATS ---
+
+    // Admin Stats
+    app.get("/admin-stats", verifyToken, verifyAdmin, async (req, res) => {
+        const totalIssues = await issueCollection.estimatedDocumentCount();
+        const pendingIssues = await issueCollection.countDocuments({ status: "Pending" });
+        const resolvedIssues = await issueCollection.countDocuments({ status: "Resolved" });
+        const totalUsers = await userCollection.estimatedDocumentCount();
+        const payments = await paymentsCollection.find().toArray();
+        const totalRevenue = payments.reduce((sum, p) => sum + p.amount, 0);
+
+        res.send({ totalIssues, pendingIssues, resolvedIssues, totalUsers, totalRevenue });
+    });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
@@ -382,6 +451,3 @@ app.get("/", (req, res) => {
 app.listen(port, () => {
   console.log(`Example app listening on port ${port}`);
 });
-
-
-//https://docs.google.com/document/d/1IBsw4txo6JSav_MJNBsv5_spB0emiYVK/edit
